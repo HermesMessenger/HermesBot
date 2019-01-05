@@ -1,0 +1,31 @@
+{
+  "name": "hermesbot",
+  "version": "1.0.0",
+  "description": "Hermes bot library",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HermesMessenger/HermesBot.git"
+  },
+  "main": "./src/bot.js",
+  "keywords": [
+    "telegram",
+    "bot",
+    "api",
+    "node",
+    "nodejs"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/main.js"
+  },
+  "dependencies": {
+    "eventemitter3": "^3.1.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
+  },
+  "devDependencies": {},
+  "bugs": {
+    "url": "https://github.com/HermesMessenger/HermesBot/issues"
+  },
+  "homepage": "https://github.com/HermesMessenger/HermesBot#readme"
+}
