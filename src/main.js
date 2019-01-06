@@ -6,6 +6,9 @@ const Request = require('request-promise');
 const NULLCHAR = String.fromCharCode(0x0);
 const SEPCHAR = String.fromCharCode(0x1);
 
+var _offset = 0
+
+
 const HermesBot = EventEmitter => class extends EventEmitter {
   constructor(UUID, options = {}) {
     super();
@@ -18,6 +21,10 @@ const HermesBot = EventEmitter => class extends EventEmitter {
     this.HermesURL = options.HermesURL || 'https://hermesmessenger.duckdns.org';
     
     this.PollingRate = options.PollingRate || 200;
+
+    this.getUsername(this.BotUUID).then(username => {
+      this.BotUsername = username;
+    });
 
   }
 
@@ -49,12 +56,11 @@ const HermesBot = EventEmitter => class extends EventEmitter {
     try {
       const body = await Request(options);
       if (body) {
-        var messages = body.split(NULLCHAR);
+        if (callback) {
+          callback(null, body);
+        }
+        return body;
       }
-      if (callback) {
-        callback(null, messages);
-      }
-      return messages;
     }
     catch (err) {
       if (callback) {
@@ -64,6 +70,35 @@ const HermesBot = EventEmitter => class extends EventEmitter {
         throw err;
       }
     }
+  }
+
+  _processMessages(message) {
+    message = message.split(NULLCHAR)
+    let newMessages = message.length - _offset
+    if (newMessages > 0) {
+      for (_offset; _offset < message.length; _offset++) {
+
+        let message_pair = message[_offset].split(SEPCHAR);
+        let messageInfo = {
+          sender: message_pair[0],
+          text: message_pair[1],
+          time: message_pair[2], 
+          chat: 'general' // TODO: Change this when we add multiple chats
+        }
+
+        if (message_pair[0] != this.BotUsername) {
+          this.emit('message', messageInfo)
+        }
+      }
+    };
+  }
+
+  getUsername(uuid, callback) {
+    let params = {
+      uuid: uuid
+    }
+
+    return this._request('POST', 'api/getusername', params, callback);
   }
 
   loadMessages(callback) {
@@ -85,6 +120,7 @@ const HermesBot = EventEmitter => class extends EventEmitter {
   }
 
   quote(orig, message, callback) {
+    orig.text = orig.text.replace(/(\")(.+)(\:)(.+)(\")(\ )/g, "") // Delete quotes in the message
     let new_message = '\"' + orig.sender + ': ' + orig.text + '\" ' + message
 
     return this.sendMessage(orig.chat, new_message, callback)
