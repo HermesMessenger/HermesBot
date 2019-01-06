@@ -1,10 +1,8 @@
 # HermesBot
 
-A library for creating a bot for Hermes Messenger. Based on [Slimbot](https://github.com/edisonchee/bot), a Telegram bot library.
+A library for creating a bot for Hermes Messenger. Based on [Slimbot](https://github.com/edisonchee/slimbot), a Telegram bot library.
 
 ***
-
-# Getting started
 
 ## Creating a bot
 
