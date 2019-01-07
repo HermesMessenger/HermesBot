@@ -86,8 +86,26 @@ const HermesBot = EventEmitter => class extends EventEmitter {
           chat: 'general' // TODO: Change this when we add multiple chats
         }
 
+        let quoteMatch = messageInfo.text.match(/\"(.+)\: *(.+)\"/)
+        if (quoteMatch) {
+          messageInfo.quote = {
+            sender: quoteMatch[1], 
+            text: quoteMatch[2]
+          }
+        }
+
+// --------------------------------------------------------------
+//      Emit the message object to the corresponding event
+// --------------------------------------------------------------
+
         if (message_pair[0] != this.BotUsername) {
-          this.emit('message', messageInfo)
+          if (messageInfo.quote && messageInfo.quote.sender == this.BotUsername) {
+            this.emit('quoted', messageInfo)
+          } else if (messageInfo.text.indexOf('@' + this.BotUsername) != -1) {
+            this.emit('mentioned', messageInfo)
+          } else {
+            this.emit('message', messageInfo)
+          }
         }
       }
     };
