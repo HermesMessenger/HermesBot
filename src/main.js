@@ -74,7 +74,6 @@ const HermesBot = EventEmitter => class extends EventEmitter {
       }
     }
     catch (err) {
-      console.log(err)
       if (err.name == 'RequestError') {
         console.error('Error: Can\'t connect to Hermes. \nEnsure you are connected to the Internet. ' + this.HermesURL + '\n\n') 
         process.exit(1)
@@ -181,7 +180,6 @@ const HermesBot = EventEmitter => class extends EventEmitter {
         image_b64: image
       }
 
-      console.log(params)
       return this._request('POST', 'api/saveSettings', params, callback);
     })
   }
