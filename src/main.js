@@ -2,6 +2,7 @@
 
 const EventEmitter = require('eventemitter3');
 const Request = require('request-promise');
+const fs = require('fs')
 
 const NULLCHAR = String.fromCharCode(0x0);
 const SEPCHAR = String.fromCharCode(0x1);
@@ -13,14 +14,14 @@ const HermesBot = EventEmitter => class extends EventEmitter {
   constructor(UUID, options = {}) {
     super();
     if (UUID === undefined) {
-      throw new Error('Please provide a bot username.');
+      throw new Error('Please provide a bot token.');
     }
 
     this.BotUUID = UUID;
     this.options = options;
     this.HermesURL = options.HermesURL || 'https://hermesmessenger.duckdns.org';
     
-    this.PollingRate = options.PollingRate || 200;
+    this.PollingRate = options.PollingRate || 500;
 
     this.getUsername(this.BotUUID).then(username => {
       this.BotUsername = username;
@@ -50,43 +51,58 @@ const HermesBot = EventEmitter => class extends EventEmitter {
       method: method, 
       uri: this.HermesURL + '/' + location,
       body: formData,
-      json: true
+      json: true, 
+      resolveWithFullResponse: true,
+      simple: false
     };
 
     try {
-      const body = await Request(options);
-      if (body) {
-        if (callback) {
-          callback(null, body);
+      const res = await Request(options);
+      if (res) {
+        if (res.statusCode == 200) {
+          if (callback) {
+            callback(null, res.body);
+          }
+          return res.body;
+        } else {
+          if (res.statusCode == 500 && location == 'api/getusername') {
+            throw new Error('Invalid token')
+          } else {
+            throw new Error('Bad status code: ' + res.statusCode)
+          }
         }
-        return body;
       }
     }
     catch (err) {
-      if (callback) {
-        callback(err);
+      console.log(err)
+      if (err.name == 'RequestError') {
+        console.error('Error: Can\'t connect to Hermes. \nEnsure you are connected to the Internet. ' + this.HermesURL + '\n\n') 
+        process.exit(1)
+
+      } else if (err == 'Error: Invalid token') {
+        console.error('Error: Invalid bot token: ' + this.BotUUID + '\n\n') 
+        process.exit(1)
       }
-      else {
-        throw err;
-      }
+
     }
   }
 
   _processMessages(message) {
     message = message.split(NULLCHAR)
-    let newMessages = message.length - _offset
-    if (newMessages > 0) {
-      for (_offset; _offset < message.length; _offset++) {
+
+    if (message.length > _offset) {
+      for (_offset; message.length > _offset; _offset++) {
 
         let message_pair = message[_offset].split(SEPCHAR);
         let messageInfo = {
+          id: _offset,
           sender: message_pair[0],
           text: message_pair[1],
           time: message_pair[2], 
           chat: 'general' // TODO: Change this when we add multiple chats
         }
 
-        let quoteMatch = messageInfo.text.match(/\"(.+)\: *(.+)\"/)
+        let quoteMatch = messageInfo.text.match(/\"([^:]*): *(.+)\"/)
         if (quoteMatch) {
           messageInfo.quote = {
             sender: quoteMatch[1], 
@@ -98,13 +114,14 @@ const HermesBot = EventEmitter => class extends EventEmitter {
 //      Emit the message object to the corresponding event
 // --------------------------------------------------------------
 
-        if (message_pair[0] != this.BotUsername) {
+        if (messageInfo.sender != this.BotUsername) {
+
+          this.emit('message', messageInfo)
+
           if (messageInfo.quote && messageInfo.quote.sender == this.BotUsername) {
             this.emit('quoted', messageInfo)
           } else if (messageInfo.text.indexOf('@' + this.BotUsername) != -1) {
             this.emit('mentioned', messageInfo)
-          } else {
-            this.emit('message', messageInfo)
           }
         }
       }
@@ -130,8 +147,8 @@ const HermesBot = EventEmitter => class extends EventEmitter {
   sendMessage(chat, message, callback) {
     let params = {
       uuid: this.BotUUID,
-      message: message
-//    chat: chat  TODO: Add multiple groups
+      message: message,
+      chat: chat
     };
     
     return this._request('POST', 'api/sendmessage', params, callback);
@@ -142,6 +159,45 @@ const HermesBot = EventEmitter => class extends EventEmitter {
     let new_message = '\"' + orig.sender + ': ' + orig.text + '\" ' + message
 
     return this.sendMessage(orig.chat, new_message, callback)
+  }
+
+  saveSetting(color = undefined, image = undefined, callback) {
+    let params = {
+      uuid: this.BotUUID
+    }
+
+    this._request('GET', 'api/getSettings/' + this.BotUsername, params).then(settings => {
+      if (color == undefined) color = settings.color
+      if (image == undefined) image = settings.image
+
+      if (color.charAt(0) == '#') color = color.substring(1);
+      image = encodeURIComponent(image)
+
+      let params = {
+        uuid: this.BotUUID,
+        color: color, 
+        notifications: 2, // Disable notifications since they are useless
+        dark: false,  // Disable dark theme since it is useless
+        image_b64: image
+      }
+
+      console.log(params)
+      return this._request('POST', 'api/saveSettings', params, callback);
+    })
+  }
+
+
+  setColor(color, callback) {
+    return this.saveSetting(color, undefined, callback);
+  }
+  
+  setImage(image, callback) {
+    fs.readFile(image, 'base64', (err, data) => {
+      if (!err) image = data 
+
+      return this.saveSetting(undefined, image, callback);
+    })
+
   }
 
 }
