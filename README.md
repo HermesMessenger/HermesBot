@@ -6,7 +6,7 @@ A library for creating a bot for Hermes Messenger. Based on [Slimbot](https://gi
 
 ## Creating a bot
 
-Go to https://hermesmessenger.duckdns.org/createBot and create a bot on that page.   
+Go to https://hermesmessenger.chat/createBot and create a bot on that page.   
 Save the token it gives you, since that token is what lets your bot communicate with our API.
 
 ## Installing the library
@@ -30,7 +30,7 @@ bot.on('message', message => {
   console.log('Sent at time ' + message.time + ' in chat ' + message.chat)
   console.log()
 
-  if (message.text.indexOf('Hi bot') != -1) { // If message contains the text 'Hi bot', reply
+  if (message.text.indexOf('Hi bot') !== -1) { // If message contains the text 'Hi bot', reply
     bot.quote(message, 'Hi, ' + message.sender)
   }
 });
